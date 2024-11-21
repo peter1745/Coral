@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core.hpp"
+#include "String.hpp"
 
 namespace Coral {
 
@@ -54,7 +55,7 @@ namespace Coral {
 			return ManagedType::Double;
 		else if constexpr (std::same_as<TArg, bool>)
 			return ManagedType::Bool;
-		else if constexpr (std::same_as<TArg, std::string>)
+		else if constexpr (std::same_as<TArg, std::string> || std::same_as<TArg, Coral::String>)
 			return ManagedType::String;
 		else
 			return ManagedType::Unknown;
@@ -63,7 +64,8 @@ namespace Coral {
 	template <typename TArg, size_t TIndex>
 	inline void AddToArrayI(const void** InArgumentsArr, ManagedType* InParameterTypes, TArg&& InArg)
 	{
-		InParameterTypes[TIndex] = GetManagedType<std::remove_reference_t<TArg>>();
+		ManagedType managedType = GetManagedType<std::remove_const_t<std::remove_reference_t<TArg>>>();
+		InParameterTypes[TIndex] = managedType;
 
 		if constexpr (std::is_pointer_v<std::remove_reference_t<TArg>>)
 		{

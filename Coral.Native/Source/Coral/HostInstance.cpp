@@ -17,6 +17,7 @@ namespace Coral {
 	struct CoreCLRFunctions
 	{
 		hostfxr_set_error_writer_fn SetHostFXRErrorWriter = nullptr;
+		hostfxr_set_runtime_property_value_fn SetRuntimePropertyValue = nullptr;
 		hostfxr_initialize_for_runtime_config_fn InitHostFXRForRuntimeConfig = nullptr;
 		hostfxr_get_runtime_delegate_fn GetRuntimeDelegate = nullptr;
 		hostfxr_close_fn CloseHostFXR = nullptr;
@@ -153,6 +154,12 @@ namespace Coral {
 			std::filesystem::path("/usr/lib/dotnet/host/fxr/"),
 			std::filesystem::path("/usr/share/dotnet/host/fxr/"),
 		};
+#elif defined(CORAL_MACOSX)
+        auto searchPaths = std::array
+        {
+            std::filesystem::path("/usr/lib/dotnet/host/fxr/"),
+            std::filesystem::path("/usr/local/share/dotnet/host/fxr/"),
+        };
 #endif
 
 		for (const auto& path : searchPaths)
@@ -209,6 +216,7 @@ namespace Coral {
 
 		// Load CoreCLR functions
 		s_CoreCLRFunctions.SetHostFXRErrorWriter = LoadFunctionPtr<hostfxr_set_error_writer_fn>(libraryHandle, "hostfxr_set_error_writer");
+		s_CoreCLRFunctions.SetRuntimePropertyValue = LoadFunctionPtr<hostfxr_set_runtime_property_value_fn>(libraryHandle, "hostfxr_set_runtime_property_value");
 		s_CoreCLRFunctions.InitHostFXRForRuntimeConfig = LoadFunctionPtr<hostfxr_initialize_for_runtime_config_fn>(libraryHandle, "hostfxr_initialize_for_runtime_config");
 		s_CoreCLRFunctions.GetRuntimeDelegate = LoadFunctionPtr<hostfxr_get_runtime_delegate_fn>(libraryHandle, "hostfxr_get_runtime_delegate");
 		s_CoreCLRFunctions.CloseHostFXR = LoadFunctionPtr<hostfxr_close_fn>(libraryHandle, "hostfxr_close");
@@ -231,6 +239,13 @@ namespace Coral {
 			int status = s_CoreCLRFunctions.InitHostFXRForRuntimeConfig(runtimeConfigPath.c_str(), nullptr, &m_HostFXRContext);
 			CORAL_VERIFY(status == StatusCode::Success || status == StatusCode::Success_HostAlreadyInitialized || status == StatusCode::Success_DifferentRuntimeProperties);
 			CORAL_VERIFY(m_HostFXRContext != nullptr);
+
+			std::filesystem::path coralDirectoryPath = m_Settings.CoralDirectory;
+	#ifdef CORAL_WIDE_CHARS
+			s_CoreCLRFunctions.SetRuntimePropertyValue(m_HostFXRContext, L"APP_CONTEXT_BASE_DIRECTORY", coralDirectoryPath.c_str());
+	#else
+			s_CoreCLRFunctions.SetRuntimePropertyValue(m_HostFXRContext, "APP_CONTEXT_BASE_DIRECTORY", coralDirectoryPath.c_str());
+	#endif
 
 			status = s_CoreCLRFunctions.GetRuntimeDelegate(m_HostFXRContext, hdt_load_assembly_and_get_function_pointer, (void**)&s_CoreCLRFunctions.GetManagedFunctionPtr);
 			CORAL_VERIFY(status == StatusCode::Success);
@@ -317,6 +332,7 @@ namespace Coral {
 
 		s_ManagedFunctions.SetInternalCallsFptr = LoadCoralManagedFunctionPtr<SetInternalCallsFn>(CORAL_STR("Coral.Managed.Interop.InternalCallsManager, Coral.Managed"), CORAL_STR("SetInternalCalls"));
 		s_ManagedFunctions.CreateObjectFptr = LoadCoralManagedFunctionPtr<CreateObjectFn>(CORAL_STR("Coral.Managed.ManagedObject, Coral.Managed"), CORAL_STR("CreateObject"));
+		s_ManagedFunctions.CopyObjectFptr = LoadCoralManagedFunctionPtr<CopyObjectFn>(CORAL_STR("Coral.Managed.ManagedObject, Coral.Managed"), CORAL_STR("CopyObject"));
 		s_ManagedFunctions.InvokeMethodFptr = LoadCoralManagedFunctionPtr<InvokeMethodFn>(CORAL_STR("Coral.Managed.ManagedObject, Coral.Managed"), CORAL_STR("InvokeMethod"));
 		s_ManagedFunctions.InvokeMethodRetFptr = LoadCoralManagedFunctionPtr<InvokeMethodRetFn>(CORAL_STR("Coral.Managed.ManagedObject, Coral.Managed"), CORAL_STR("InvokeMethodRet"));
 		s_ManagedFunctions.SetFieldValueFptr = LoadCoralManagedFunctionPtr<SetFieldValueFn>(CORAL_STR("Coral.Managed.ManagedObject, Coral.Managed"), CORAL_STR("SetFieldValue"));

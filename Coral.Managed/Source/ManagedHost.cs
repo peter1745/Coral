@@ -7,7 +7,7 @@ using System.Threading;
 
 namespace Coral.Managed;
 
-internal enum MessageLevel { Info = 1, Warning = 2, Error = 4 }
+internal enum MessageLevel { Trace = 1, Info = 2, Warning = 4, Error = 8 }
 
 internal static class ManagedHost
 {

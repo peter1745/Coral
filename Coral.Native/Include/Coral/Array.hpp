@@ -33,6 +33,20 @@ namespace Coral {
 			return result;
 		}
 
+		static Array New(const void* buffer, size_t size)
+		{
+			Array<TValue> result;
+
+			if (buffer)
+			{
+				result.m_Ptr = static_cast<TValue*>(Memory::AllocHGlobal(size));
+				result.m_Length = static_cast<int32_t>(size);
+				memcpy(result.m_Ptr, buffer, size);
+			}
+
+			return result;
+		}
+
 		static Array New(std::initializer_list<TValue> InValues)
 		{
 			Array result;

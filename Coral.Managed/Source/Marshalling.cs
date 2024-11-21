@@ -9,9 +9,11 @@ namespace Coral.Managed;
 
 public static class Marshalling
 {
+	// This needs to map to Coral::Array, hence the unused ArrayHandle
 	struct ValueArrayContainer
 	{
 		public IntPtr Data;
+		public IntPtr ArrayHandle;
 		public int Length;
 	};
 

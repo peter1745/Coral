@@ -8,10 +8,11 @@ namespace Coral {
 
 	enum class MessageLevel
 	{
-		Info = 1 << 0,
-		Warning = 1 << 1,
-		Error = 1 << 2,
-		All = Info | Warning | Error
+		Trace = 1 << 0,
+		Info = 1 << 1,
+		Warning = 1 << 2,
+		Error = 1 << 3,
+		All = Trace | Info | Warning | Error
 	};
 
 	template<typename T>

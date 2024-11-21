@@ -12,6 +12,14 @@ namespace Coral {
 	class ManagedObject
 	{
 	public:
+		ManagedObject() = default;
+		ManagedObject(const ManagedObject& InOther);
+		ManagedObject(ManagedObject&& InOther) noexcept;
+		~ManagedObject();
+
+		ManagedObject& operator=(const ManagedObject& InOther);
+		ManagedObject& operator=(ManagedObject&& InOther) noexcept;
+
 		template<typename TReturn, typename... TArgs>
 		TReturn InvokeMethod(std::string_view InMethodName, TArgs&&... InParameters) const
 		{
@@ -130,7 +138,7 @@ namespace Coral {
 
 	private:
 		void* m_Handle = nullptr;
-		const Type* m_Type;
+		const Type* m_Type = nullptr;
 
 	private:
 		friend class ManagedAssembly;

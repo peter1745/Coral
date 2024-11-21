@@ -2,7 +2,7 @@
 
 #include <string_view>
 
-#ifdef CORAL_WINDOWS
+#if defined(CORAL_WINDOWS)
 	#define CORAL_CALLTYPE __cdecl
 	#define CORAL_HOSTFXR_NAME "hostfxr.dll"
 
@@ -19,13 +19,22 @@
 		using CharType = unsigned short;
 		using StringView = std::string_view;
 	#endif
-#else
+#elif defined(CORAL_LINUX)
 	#define CORAL_CALLTYPE
 	#define CORAL_STR(s) s
 	#define CORAL_HOSTFXR_NAME "libhostfxr.so"
 
 	using CharType = char;
 	using StringView = std::string_view;
+
+#else
+    #define CORAL_CALLTYPE
+    #define CORAL_STR(s) s
+    #define CORAL_HOSTFXR_NAME "libhostfxr.dylib"
+
+    using CharType = char;
+    using StringView = std::string_view;
+
 #endif
 
 #define CORAL_DOTNET_TARGET_VERSION_MAJOR 8

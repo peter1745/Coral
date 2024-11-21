@@ -8,6 +8,54 @@
 
 namespace Coral {
 
+	ManagedObject::ManagedObject(const ManagedObject& InOther)
+	{
+		if (InOther.m_Handle)
+		{
+			m_Handle = s_ManagedFunctions.CopyObjectFptr(InOther.m_Handle);
+			m_Type = InOther.m_Type;
+		}
+	}
+
+	ManagedObject::ManagedObject(ManagedObject&& InOther) noexcept : m_Handle(InOther.m_Handle), m_Type(InOther.m_Type)
+	{
+		InOther.m_Handle = nullptr;
+		InOther.m_Type = nullptr;
+	}
+
+	ManagedObject::~ManagedObject()
+	{
+		Destroy();
+	}
+
+	ManagedObject& ManagedObject::operator=(ManagedObject&& InOther) noexcept
+	{
+		if (this != &InOther)
+		{
+			m_Handle = InOther.m_Handle;
+			m_Type = InOther.m_Type;
+			InOther.m_Handle = nullptr;
+			InOther.m_Type = nullptr;
+		}
+
+		return *this;
+	}
+
+	ManagedObject& ManagedObject::operator=(const ManagedObject& InOther)
+	{
+		if (this != &InOther)
+		{
+			Destroy();
+			if (InOther.m_Handle)
+			{
+				m_Handle = s_ManagedFunctions.CopyObjectFptr(InOther.m_Handle);
+				m_Type = InOther.m_Type;
+			}
+		}
+
+		return *this;
+	}
+
 	void ManagedObject::InvokeMethodInternal(std::string_view InMethodName, const void** InParameters, const ManagedType* InParameterTypes, size_t InLength) const
 	{
 		// NOTE(Peter): If you get an exception in this function it's most likely because you're using a Native only debugger type in Visual Studio

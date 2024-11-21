@@ -69,6 +69,7 @@ namespace Coral {
 #pragma endregion
 
 	using CreateObjectFn = void* (*)(TypeId, Bool32, const void**, const ManagedType*, int32_t);
+	using CopyObjectFn = void* (*)(void*);
 	using InvokeMethodFn = void (*)(void*, String, const void**, const ManagedType*, int32_t);
 	using InvokeMethodRetFn = void (*)(void*, String, const void**, const ManagedType*, int32_t, void*);
 	using InvokeStaticMethodFn = void (*)(TypeId, String, const void**, const ManagedType*, int32_t);
@@ -141,6 +142,7 @@ namespace Coral {
 #pragma endregion
 
 		CreateObjectFn CreateObjectFptr = nullptr;
+		CopyObjectFn CopyObjectFptr = nullptr;
 		CreateAssemblyLoadContextFn CreateAssemblyLoadContextFptr = nullptr;
 		InvokeMethodFn InvokeMethodFptr = nullptr;
 		InvokeMethodRetFn InvokeMethodRetFptr = nullptr;

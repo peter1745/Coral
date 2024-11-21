@@ -22,7 +22,9 @@ public static class AssemblyLoader
 	private static readonly Dictionary<Type, AssemblyLoadStatus> s_AssemblyLoadErrorLookup = new();
 	private static readonly Dictionary<int, AssemblyLoadContext?> s_AssemblyContexts = new();
 	private static readonly Dictionary<int, Assembly> s_AssemblyCache = new();
+#if DEBUG
 	private static readonly Dictionary<int, List<GCHandle>> s_AllocatedHandles = new();
+#endif
 	private static AssemblyLoadStatus s_LastLoadStatus = AssemblyLoadStatus.Success;
 
 	private static readonly AssemblyLoadContext? s_CoralAssemblyLoadContext;
@@ -57,6 +59,8 @@ public static class AssemblyLoader
 
 	internal static Assembly? ResolveAssembly(AssemblyLoadContext? InAssemblyLoadContext, AssemblyName InAssemblyName)
 	{
+		LogMessage($"[AssemblyLoader] Resolving assembly: {InAssemblyName.FullName}", MessageLevel.Trace);
+
 		try
 		{
 			int assemblyId = InAssemblyName.Name!.GetHashCode();
@@ -81,6 +85,14 @@ public static class AssemblyLoader
 		catch (Exception ex)
 		{
 			ManagedHost.HandleException(ex);
+		}
+
+		string assemblyPath = Path.Combine(AppContext.BaseDirectory, $"{InAssemblyName.Name}.dll");
+		LogMessage($"[AssemblyLoader] Trying to find assembly in {assemblyPath}", MessageLevel.Trace);
+		if (File.Exists(assemblyPath))
+		{
+			LogMessage($"[AssemblyLoader] Found assembly {InAssemblyName.FullName}", MessageLevel.Trace);
+			return InAssemblyLoadContext.LoadFromAssemblyPath(assemblyPath);
 		}
 
 		return null;
@@ -126,6 +138,7 @@ public static class AssemblyLoader
 			return;
 		}
 
+#if DEBUG
 		foreach (var assembly in alc.Assemblies)
 		{
 			var assemblyName = assembly.GetName();
@@ -136,8 +149,23 @@ public static class AssemblyLoader
 				continue;
 			}
 
+			// If everything is working properly, then there should not be anything left kicking around in the handles list.
+			// If you see messages here, it probably means you are mis-managing the lifetime of unmanaged resources.
+			// Managed objects that wrap an unmanaged resource need to implement IDisposable, and be Dispose()'d properly.
+			// Example:
+			//    // SceneQueryHitInterop wraps an unmanaged resource. It needs to implement IDisposable
+			//    using(SceneQueryHitInterop hit = new())
+			//    {
+			//        Physics.CastRay(ray, out hit);   // Calls into native code, populates the unmanaged resource into hit
+			//
+			//        // Do something with hit
+			//
+			//    } // hit is Dispose()'d here
+			//
 			foreach (var handle in handles)
 			{
+				LogMessage($"Found still-registered handle '{(handle.Target is null? "null" : handle.Target)}' from assembly '{assemblyName}'", MessageLevel.Warning);
+
 				if (!handle.IsAllocated || handle.Target == null)
 				{
 					continue;
@@ -149,6 +177,7 @@ public static class AssemblyLoader
 
 			s_AllocatedHandles.Remove(assemblyId);
 		}
+#endif
 
 		ManagedObject.s_CachedMethods.Clear();
 
@@ -274,6 +303,9 @@ public static class AssemblyLoader
 		return assemblyName.Name;
 	}
 
+#if DEBUG
+	// In DEBUG builds, we track all GCHandles that are allocated by the managed code,
+	// so that we can check that they've all been freed when the assembly is unloaded.
 	internal static void RegisterHandle(Assembly InAssembly, GCHandle InHandle)
 	{
 		var assemblyName = InAssembly.GetName();
@@ -288,4 +320,22 @@ public static class AssemblyLoader
 		handles.Add(InHandle);
 	}
 
+	internal static void DeregisterHandle(Assembly InAssembly, GCHandle InHandle)
+	{
+		var assemblyName = InAssembly.GetName();
+		int assemblyId = assemblyName.Name!.GetHashCode();
+
+		if (!s_AllocatedHandles.TryGetValue(assemblyId, out var handles))
+		{
+			return;
+		}
+
+		if (!InHandle.IsAllocated)
+		{
+			LogMessage($"AssemblyLoader de-registering an already freed object from assembly '{assemblyName}'", MessageLevel.Error);
+		}
+
+		handles.Remove(InHandle);
+	}
+#endif
 }

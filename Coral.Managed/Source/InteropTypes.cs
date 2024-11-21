@@ -69,7 +69,7 @@ public struct NativeArray<T> : IDisposable, IEnumerable<T>
 		}
 	}
 
-	internal NativeArray(IntPtr InArray, IntPtr InHandle, int InLength)
+	public NativeArray(IntPtr InArray, IntPtr InHandle, int InLength)
 	{
 		m_NativeArray = InArray;
 		m_ArrayHandle = InHandle;
@@ -168,15 +168,33 @@ public static class ArrayStorage
 }
 
 [StructLayout(LayoutKind.Sequential)]
-public struct NativeInstance<T>
+public struct NativeInstance<T> : IDisposable
 {
-	private readonly IntPtr m_Handle;
+	private IntPtr m_Handle;
 	private readonly IntPtr m_Unused;
 
 	private NativeInstance(IntPtr handle)
 	{
 		m_Handle = handle;
 		m_Unused = IntPtr.Zero;
+	}
+
+	public void Dispose()
+	{
+		if (m_Handle != IntPtr.Zero)
+		{
+			var handle = GCHandle.FromIntPtr(m_Handle);
+#if DEBUG
+			var type = handle.Target?.GetType();
+			if (type is not null)
+			{
+				AssemblyLoader.DeregisterHandle(type.Assembly, handle);
+			}
+#endif
+			handle.Free();
+			m_Handle = IntPtr.Zero;
+		}
+		GC.SuppressFinalize(this);
 	}
 
 	public T? Get()
@@ -194,7 +212,7 @@ public struct NativeInstance<T>
 
 	public static implicit operator NativeInstance<T>(T instance)
 	{
-		return new(GCHandle.ToIntPtr(GCHandle.Alloc(instance, GCHandleType.Pinned)));
+		return new(GCHandle.ToIntPtr(GCHandle.Alloc(instance, GCHandleType.Normal)));
 	}
 
 	public static implicit operator T?(NativeInstance<T> InInstance)

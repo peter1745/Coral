@@ -142,7 +142,36 @@ internal static class ManagedObject
 			}
 
 			var handle = GCHandle.Alloc(result, InWeakRef ? GCHandleType.Weak : GCHandleType.Normal);
+#if DEBUG
 			AssemblyLoader.RegisterHandle(type.Assembly, handle);
+#endif
+			return GCHandle.ToIntPtr(handle);
+		}
+		catch (Exception ex)
+		{
+			HandleException(ex);
+			return IntPtr.Zero;
+		}
+	}
+
+	[UnmanagedCallersOnly]
+	internal static unsafe IntPtr CopyObject(IntPtr InObjectHandle)
+	{
+		try
+		{
+			var target = GCHandle.FromIntPtr(InObjectHandle).Target;
+
+			if (target == null)
+			{
+				LogMessage($"Cannot copy object with handle {InObjectHandle}. Target was null.", MessageLevel.Error);
+				return IntPtr.Zero;
+			}
+
+			var handle = GCHandle.Alloc(target, GCHandleType.Normal);
+#if DEBUG
+			var type = target.GetType();
+			AssemblyLoader.RegisterHandle(type.Assembly, handle);
+#endif
 			return GCHandle.ToIntPtr(handle);
 		}
 		catch (Exception ex)
@@ -157,7 +186,14 @@ internal static class ManagedObject
 	{
 		try
 		{
-			GCHandle.FromIntPtr(InObjectHandle).Free();
+			GCHandle handle = GCHandle.FromIntPtr(InObjectHandle);
+#if DEBUG
+			var type = handle.Target?.GetType();
+			if (type is not null) {
+				AssemblyLoader.DeregisterHandle(type.Assembly, handle);
+			}
+#endif
+			handle.Free();
 		}
 		catch (Exception ex)
 		{
